@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broad-Crested Weir Simulator</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<style>
+/* ── AI Disclaimer Modal ── */
+#ai-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center}
+#ai-modal{background:Canvas;color:CanvasText;border-radius:16px;padding:36px 40px;max-width:420px;width:90%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.35);border:1px solid color-mix(in srgb,CanvasText 18%,transparent)}
+#ai-modal h2{margin:0 0 14px;font-size:22px}
+#ai-modal p{margin:0 0 24px;font-size:15px;line-height:1.6;color:GrayText}
+#ai-modal button{background:#1686b4;color:#fff;border:none;border-radius:9px;padding:11px 38px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+#ai-modal button:hover{background:#1270a0}
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color-scheme:light dark}
+*{box-sizing:border-box}
+body{margin:0;background:Canvas;color:CanvasText}
+.app{max-width:1450px;margin:auto;padding:22px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.eyebrow,.smallhead{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:GrayText;font-weight:700;margin-bottom:6px}
+h1{font-size:clamp(23px,3vw,34px);margin:4px 0}
+.layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);gap:16px;align-items:start}
+.left,.right{display:grid;gap:14px;min-width:0}
+.panel{border:1px solid color-mix(in srgb,CanvasText 17%,transparent);background:color-mix(in srgb,Canvas 95%,CanvasText 5%);border-radius:14px;padding:16px}
+.panel h2{font-size:17px;margin:0 0 12px}
+.diagram-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:9px}
+svg#diagram{min-width:560px;width:100%;height:auto;display:block;border-radius:9px;background:color-mix(in srgb,Canvas 90%,#1686b4 10%)}
+.legend{display:flex;gap:15px;flex-wrap:wrap;color:GrayText;font-size:12px;margin-top:9px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.control label{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:5px}
+.control output{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row input[type=range]{flex:1;accent-color:#1686b4;cursor:pointer}
+.slider-row input[type=number]{width:72px;padding:4px 6px;border:1px solid color-mix(in srgb,CanvasText 25%,transparent);border-radius:7px;background:Canvas;color:CanvasText;font:inherit;font-size:13px;font-variant-numeric:tabular-nums;text-align:right}
+.slider-row input[type=number]:focus{outline:2px solid #1686b4;border-color:#1686b4}
+.slider-row input[type=number]::-webkit-inner-spin-button,
+.slider-row input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.slider-row input[type=number]{-moz-appearance:textfield}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.metric{border:1px solid color-mix(in srgb,CanvasText 15%,transparent);border-radius:10px;padding:12px;background:color-mix(in srgb,Canvas 91%,CanvasText 9%)}
+.metric span{display:block;color:GrayText;font-size:12px}
+.metric strong{display:block;font-size:clamp(15px,2vw,22px);margin-top:4px;font-variant-numeric:tabular-nums}
+nav{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+button{font:inherit;cursor:pointer;border:1px solid color-mix(in srgb,CanvasText 20%,transparent);border-radius:9px;background:transparent;color:inherit;padding:9px 12px;font-size:13px}
+button.active{background:#176e91;color:white;border-color:#176e91}
+button:hover{border-color:#1686b4}
+.tab{display:none;line-height:1.65}.tab.active{display:block}
+.eq{font-size:clamp(14px,1.6vw,17px);text-align:center;padding:13px;background:color-mix(in srgb,Canvas 88%,#1686b4 12%);border-radius:9px;margin:10px 0;overflow-x:auto;overflow-y:hidden}
+.muted{color:GrayText}
+.callout{padding:12px;border-radius:10px;background:color-mix(in srgb,Canvas 88%,#1686b4 12%);margin:12px 0}
+.note-box{padding:10px 12px;border-left:3px solid #1686b4;background:color-mix(in srgb,Canvas 92%,#1686b4 8%);border-radius:0 8px 8px 0;margin:8px 0 12px;font-size:13.5px}
+ul,ol{padding-left:20px}li{margin:8px 0}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,CanvasText 14%,transparent);font-size:14px}
+footer{color:GrayText;font-size:12px;margin-top:14px}
+.warn{color:#c07000;font-size:13px;margin-top:6px;padding:10px 14px;border-radius:9px;background:color-mix(in srgb,Canvas 88%,orange 12%);display:none}
+.warn.show{display:block}
+/* ── Slideshow ── */
+.slide{display:none}.slide.active{display:block}
+.slide-header{font-size:clamp(15px,2vw,19px);font-weight:700;margin:0 0 14px;color:#176e91;border-left:4px solid #176e91;padding-left:10px}
+.slide-body{font-size:14px;line-height:1.65}
+.slide-body .eq{margin:10px 0}
+.slide-body ul,.slide-body ol{padding-left:18px}
+.slide-body li{margin:6px 0}
+.slide-body .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#176e91;color:#fff;border-radius:5px;padding:2px 7px;margin-bottom:8px}
+.slide-diagram{width:100%;border-radius:9px;background:color-mix(in srgb,Canvas 88%,#1686b4 12%);padding:14px;margin:10px 0;text-align:center}
+.slide-nav{display:flex;align-items:center;justify-content:space-between;margin-top:16px;gap:8px}
+.slide-nav button{padding:7px 16px;font-size:13px}
+.slide-counter{font-size:13px;color:GrayText;font-variant-numeric:tabular-nums}
+.slide-dots{display:flex;gap:5px;align-items:center}
+.slide-dot{width:8px;height:8px;border-radius:50%;background:color-mix(in srgb,CanvasText 25%,transparent);cursor:pointer;border:none;padding:0;transition:background .2s}
+.slide-dot.active{background:#176e91}
+/* ── KaTeX fixes ── */
+.katex .sqrt .sqrt-sign,
+.katex .sqrt .sqrt-line,
+.katex .sqrt svg {
+  color: currentColor;
+  fill: currentColor;
+  border-color: currentColor;
+}
+.katex .sqrt > .vlist-t {
+  display: inline-table;
+}
+.katex svg {
+  min-width: 0;
+  width: auto;
+  background: transparent;
+  border-radius: 0;
+}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.controls{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.app{padding:12px}.controls{grid-template-columns:1fr}.panel{padding:13px}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- ── AI Disclaimer Modal ── -->
+<div id="ai-modal-overlay">
+  <div id="ai-modal">
+    <h2>&#x1F916; Built with AI</h2>
+    <p>This simulator was created with the assistance of artificial intelligence. While the hydraulic equations and engineering principles are standard, always verify results against authoritative references before use in professional or academic work.</p>
+    <button id="ai-modal-ok" type="button">OK, Got It</button>
+  </div>
+</div>
+
+<main class="app">
+<header>
+  <div>
+    <div class="eyebrow">Fluid mechanics · Interactive model</div>
+    <h1>Broad-Crested Weir Simulator</h1>
+    <div class="muted">Adjust the geometry and flow conditions to explore open-channel hydraulics.</div>
+  </div>
+  <button id="reset" type="button">&#8635; Reset variables</button>
+</header>
+
+<div class="layout">
+
+<!-- ═══════════════════ LEFT COLUMN ═══════════════════ -->
+<section class="left">
+  <div class="panel">
+    <h2>2D cross-section &middot; side view</h2>
+    <div class="diagram-wrap">
+      <svg id="diagram" viewBox="0 0 720 400" role="img"
+           aria-label="Side-view diagram of a broad-crested weir">
+        <defs>
+          <pattern id="concrete" width="13" height="13" patternUnits="userSpaceOnUse">
+            <path d="M0 13L13 0" stroke="#777" stroke-width=".8" opacity=".45"/>
+          </pattern>
+          <pattern id="waterLines" width="16" height="12" patternUnits="userSpaceOnUse">
+            <path d="M0 6q4-4 8 0t8 0" fill="none" stroke="#087da9" stroke-width="1" opacity=".35"/>
+          </pattern>
+          <marker id="arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto-start-reverse">
+            <path d="M0 0L7 3.5L0 7Z" fill="#b87526"/>
+          </marker>
+        </defs>
+        <rect x="20" y="10" width="680" height="355" rx="8" fill="none" stroke="#9ca3af" opacity=".45"/>
+        <g id="gwater"></g>
+        <g id="gweir"></g>
+        <g id="gdims"></g>
+        <g id="gtxt"></g>
+        <path d="M30 355H690" stroke="#777" stroke-width="2"/>
+        <text x="35" y="375" font-size="12" fill="currentColor">CHANNEL BED</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span>&#x1F7E6; Water</span>
+      <span>&#x2B1C; Concrete weir</span>
+      <span>&#x2194; Dimensions</span>
+      <span style="color:#f59e0b">&#x2015;&#x2015; Critical depth y&#x2C;</span>
+    </div>
+    <p class="muted" style="font-size:12px;margin-bottom:0">Flow travels left &#x2192; right. Sketch is schematic and updates with sliders.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Adjust model variables</h2>
+    <div class="smallhead">Weir geometry</div>
+    <div class="controls" style="margin:12px 0 18px">
+
+      <div class="control">
+        <label for="sl_crest">Crest height (P) <output id="out_crest">1.00 m</output></label>
+        <div class="slider-row">
+          <input id="sl_crest" type="range" min=".2" max="3" step=".05" value="1">
+          <input id="num_crest" type="number" min=".2" max="3" step=".05" value="1">
+        </div>
+      </div>
+
+      <div class="control">
+        <label for="sl_length">Crest length (L) <output id="out_length">1.50 m</output></label>
+        <div class="slider-row">
+          <input id="sl_length" type="range" min=".3" max="5" step=".1" value="1.5">
+          <input id="num_length" type="number" min=".3" max="5" step=".1" value="1.5">
+        </div>
+      </div>
+
+      <div class="control">
+        <label for="sl_width">Channel width (b) <output id="out_width">2.00 m</output></label>
+        <div class="slider-row">
+          <input id="sl_width" type="range" min=".5" max="10" step=".1" value="2">
+          <input id="num_width" type="number" min=".5" max="10" step=".1" value="2">
+        </div>
+      </div>
+
+    </div>
+    <div class="smallhead">Flow conditions</div>
+    <div class="controls" style="margin-top:12px">
+
+      <div class="control">
+        <label for="sl_upstream">Upstream depth (y&#x2081;) <output id="out_upstream">2.00 m</output></label>
+        <div class="slider-row">
+          <input id="sl_upstream" type="range" min=".2" max="5" step=".05" value="2">
+          <input id="num_upstream" type="number" min=".2" max="5" step=".05" value="2">
+        </div>
+      </div>
+
+      <div class="control">
+        <label for="sl_tail">Downstream depth (y&#x2082;) <output id="out_tail">0.40 m</output></label>
+        <div class="slider-row">
+          <input id="sl_tail" type="range" min="0" max="4.5" step=".05" value=".4">
+          <input id="num_tail" type="number" min="0" max="4.5" step=".05" value=".4">
+        </div>
+      </div>
+
+      <div class="control">
+        <label for="sl_cd">Discharge coeff. (C&#x1D421;) <output id="out_cd">0.95</output></label>
+        <div class="slider-row">
+          <input id="sl_cd" type="range" min=".5" max="1.1" step=".01" value=".95">
+          <input id="num_cd" type="number" min=".5" max="1.1" step=".01" value=".95">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 6-card metrics grid -->
+  <div class="metrics">
+    <div class="metric"><span>Head over crest (H)</span><strong id="m_head">1.00 m</strong></div>
+    <div class="metric"><span>Total discharge (Q)</span><strong id="m_flow">— m³/s</strong></div>
+    <div class="metric"><span>Unit discharge (q)</span><strong id="m_unit">— m²/s</strong></div>
+    <div class="metric"><span>Critical depth (y&#x2C;)</span><strong id="m_yc">— m</strong></div>
+    <div class="metric"><span>Critical velocity (v&#x2C;)</span><strong id="m_vc">— m/s</strong></div>
+    <div class="metric"><span>Upstream Froude (Fr&#x2081;)</span><strong id="m_fr1">—</strong></div>
+  </div>
+  <p id="subWarn" class="warn">&#x26A0; Tailwater is high — submergence may reduce actual discharge below the value shown. The free-flow equation is displayed; apply a submergence correction (e.g. Villemonte) for design work.</p>
+</section>
+
+<!-- ═══════════════════ RIGHT COLUMN ═══════════════════ -->
+<aside class="right">
+  <div class="panel">
+    <div class="eyebrow">Reference and learning</div>
+    <h2 style="margin-top:5px">Explore the weir</h2>
+    <nav id="tabNav">
+      <button class="tabBtn active" type="button" data-tab="overview">Overview</button>
+      <button class="tabBtn" type="button" data-tab="equations">Equations</button>
+      <button class="tabBtn" type="button" data-tab="theory">Theory</button>
+      <button class="tabBtn" type="button" data-tab="uses">Applications</button>
+      <button class="tabBtn" type="button" data-tab="python">Python</button>
+      <button class="tabBtn" type="button" data-tab="slideshow">&#x1F4FD; Slideshow</button>
+    </nav>
+
+    <!-- OVERVIEW -->
+    <section class="tab active" id="tab-overview">
+      <div class="smallhead">What is a broad-crested weir?</div>
+      <p>A broad-crested weir is a raised obstruction across an open channel with a relatively long, flat top. Water flows over the crest, and under suitable conditions the flow becomes critical on the crest — making it a reliable flow-measurement device.</p>
+      <div class="callout">
+        <b>Live operating conditions</b>
+        <p id="ov_condition" style="margin-bottom:4px">Flow is above the crest.</p>
+        <p class="muted" id="ov_submergence" style="font-size:13px;margin:0"></p>
+      </div>
+      <div class="row"><span class="muted">Ideal crest flow regime</span><b id="ov_regime">Critical</b></div>
+      <div class="row"><span class="muted">Potentially submerged</span><b id="ov_submerged">No</b></div>
+      <div class="row"><span class="muted">Froude number at crest</span><b>1.00 (critical, ideal)</b></div>
+      <div class="row"><span class="muted">Flow per unit width (q)</span><b id="ov_unitRow">— m²/s</b></div>
+    </section>
+
+    <!-- EQUATIONS (Expanded step-by-step for presentation) -->
+    <section class="tab" id="tab-equations">
+      <div class="smallhead">First-principles derivation · Presentation guide</div>
+      <p class="muted">Derived from <b>Conservation of Mass (Continuity)</b> and <b>Conservation of Energy (Bernoulli's Equation)</b> for steady, incompressible, frictionless flow in a rectangular channel of width <i>b</i>.</p>
+
+      <div class="smallhead" style="margin-top:16px">Step 1 · Define the Upstream Head (H)</div>
+      <p>Using the horizontal channel bed as our elevation datum (<i>z = 0</i>), the upstream water surface sits at elevation <i>y</i><sub>1</sub> and the flat weir crest sits at elevation <i>P</i>. The static head driving water over the crest is:</p>
+      <div class="eq" id="eq1"></div>
+      <div class="note-box"><b>Presentation talking point:</b> Total upstream energy head is actually $H_0 = (y_1 - P) + \frac{V_1^2}{2g}$. Because the upstream channel is deep and wide, the approach velocity $V_1$ is very small, so we neglect $\frac{V_1^2}{2g}$ and set $H \approx y_1 - P$.</div>
+
+      <div class="smallhead" style="margin-top:16px">Step 2 · Conservation of Mass (Continuity)</div>
+      <p>For an incompressible fluid in a rectangular channel of width <i>b</i> and flow depth <i>y</i> over the crest, volumetric flow rate <i>Q</i> is cross-sectional area times velocity:</p>
+      <div class="eq" id="eq2a"></div>
+      <p>Dividing by channel width <i>b</i> gives the <b>unit discharge <i>q</i></b> (flow rate per meter of width), allowing us to write velocity <i>v</i> purely in terms of depth <i>y</i>:</p>
+      <div class="eq" id="eq2b"></div>
+
+      <div class="smallhead" style="margin-top:16px">Step 3 · Conservation of Energy (Specific Energy)</div>
+      <p>Apply Bernoulli's equation between the upstream pool (where elevation above the crest is $H$ and velocity $\approx 0$) and a point on the crest (where depth is $y$ and velocity is $v$). Measuring energy relative to the crest surface defines the <b>Specific Energy <i>E</i></b>:</p>
+      <div class="eq" id="eq3a"></div>
+      <p>Substitute $v = \frac{q}{y}$ from Step 2 into the kinetic energy term $\frac{v^2}{2g}$:</p>
+      <div class="eq" id="eq3b"></div>
+      <div class="note-box"><b>Presentation talking point:</b> Notice the trade-off in $E(y)$: the first term ($y$) is potential/pressure energy, and the second term ($\frac{q^2}{2gy^2}$) is kinetic energy. As water accelerates onto the crest, depth $y$ drops while kinetic energy rises.</div>
+
+      <div class="smallhead" style="margin-top:16px">Step 4 · Find Critical Flow by Minimizing Specific Energy</div>
+      <p>Because the weir crest is broad and flat, the flow naturally adjusts to pass over the crest at the <b>minimum possible specific energy</b> for a given flow rate <i>q</i>. To find this minimum, take the derivative of $E(y)$ with respect to $y$ (treating $q$ as constant) and set it to zero:</p>
+      <div class="eq" id="eq4a"></div>
+      <p>Solve for $q^2$ at the critical depth $y = y_c$:</p>
+      <div class="eq" id="eq4b"></div>
+      <div class="note-box"><b>Why is this called "Critical Flow"?</b> Rearranging $q^2 = g y_c^3$ gives $\frac{q^2}{y_c^2} = g y_c \implies v_c^2 = g y_c \implies \frac{v_c}{\sqrt{g y_c}} = 1$. That ratio is the <b>Froude number ($Fr = 1$)</b>, meaning flow speed equals shallow-water wave speed, preventing downstream disturbances from traveling upstream.</div>
+
+      <div class="smallhead" style="margin-top:16px">Step 5 · Relate Critical Depth ($y_c$) to Upstream Head ($H$)</div>
+      <p>Substitute the critical condition $q^2 = g y_c^3$ back into the specific energy equation from Step 3 to find the minimum specific energy $E_c$:</p>
+      <div class="eq" id="eq5a"></div>
+      <p>Since friction losses are neglected between the upstream pool and the crest, energy is conserved ($E_c = H$). Setting $\frac{3}{2}y_c = H$ gives the famous 2/3 rule:</p>
+      <div class="eq" id="eq5b"></div>
+
+      <div class="smallhead" style="margin-top:16px">Step 6 · Derive Ideal Unit Discharge ($q_{\text{ideal}}$)</div>
+      <p>Take the square root of $q^2 = g y_c^3$ from Step 4 to get $q_{\text{ideal}} = \sqrt{g}\,y_c^{3/2}$, then plug in $y_c = \frac{2}{3}H$:</p>
+      <div class="eq" id="eq6"></div>
+
+      <div class="smallhead" style="margin-top:16px">Step 7 · Total Discharge ($Q$) &amp; Discharge Coefficient ($C_d$)</div>
+      <p>Multiply unit discharge $q_{\text{ideal}}$ by channel width $b$ ($Q = b \cdot q$), and multiply by the empirical <b>discharge coefficient $C_d$</b> to account for real-world friction, boundary-layer growth, and streamline curvature:</p>
+      <div class="eq" id="eq7"></div>
+      <p class="muted">Typical $C_d$ values range from <b>0.848 to 1.00</b> (per ISO 4374). Notice that $Q \propto H^{3/2}$ — meaning a single upstream depth measurement $y_1$ completely determines the flow rate!</p>
+
+      <div class="smallhead" style="margin-top:16px">Step 8 · Critical Velocity &amp; Live Numerical Check</div>
+      <div class="eq" id="eq8"></div>
+      <div class="callout" id="eq_live_walkthrough" style="font-size:13.5px"></div>
+    </section>
+
+    <!-- THEORY -->
+    <section class="tab" id="tab-theory">
+      <div class="smallhead">How does it work?</div>
+      <ol>
+        <li><b>Water approaches the weir.</b><br>
+          <span class="muted">The obstruction raises the upstream level. Head H = y₁ − P above the crest drives the flow. Upstream flow is subcritical (Fr₁ &lt; 1).</span></li>
+        <li><b>Water accelerates onto the crest.</b><br>
+          <span class="muted">As water rises over the crest its depth decreases and velocity increases. Specific energy is exchanged between depth and velocity.</span></li>
+        <li><b>Critical flow develops on the crest.</b><br>
+          <span class="muted">The crest acts as a hydraulic control. The Froude number reaches 1 — flow velocity equals the shallow-water wave speed √(g y&#x2C;). This is why discharge can be calculated from the upstream head alone.</span></li>
+        <li><b>Flow accelerates downstream.</b><br>
+          <span class="muted">Water becomes supercritical (Fr &gt; 1) on the downstream face. A hydraulic jump may form further downstream depending on tailwater conditions.</span></li>
+      </ol>
+
+      <div class="smallhead" style="margin-top:14px">Froude number</div>
+      <div class="eq" id="eq_fr"></div>
+      <p>Fr &lt; 1: subcritical (tranquil). &nbsp; Fr = 1: critical. &nbsp; Fr &gt; 1: supercritical (rapid).</p>
+      <p>The broad-crested weir forces Fr = 1 at the crest, decoupling the upstream measurement from downstream disturbances — the key property that makes it a reliable flow gauge.</p>
+
+      <div class="smallhead" style="margin-top:14px">Live Froude numbers</div>
+      <div class="row"><span class="muted">Upstream (Fr₁)</span><b id="th_fr1">—</b></div>
+      <div class="row"><span class="muted">At crest (ideal)</span><b>1.00</b></div>
+    </section>
+
+    <!-- APPLICATIONS -->
+    <section class="tab" id="tab-uses">
+      <div class="smallhead">Engineering applications</div>
+      <ul>
+        <li><b>Open-channel flow measurement.</b><br>
+          <span class="muted">The primary engineering use. Because critical flow establishes on the crest, discharge is calculated from the upstream head alone. Standards include <em>BS EN ISO 4374</em> and <em>ISO 3846</em>.</span></li>
+        <li><b>Irrigation and water distribution.</b><br>
+          <span class="muted">Broad-crested weirs measure and regulate water delivery through agricultural canals. Their robust, flat crest tolerates debris and sediment better than sharp-crested alternatives.</span></li>
+        <li><b>Wastewater and stormwater management.</b><br>
+          <span class="muted">Used in treatment-plant channels and stormwater outfalls to monitor flow rates and control hydraulic grade lines.</span></li>
+        <li><b>River gauging and flood hydrology.</b><br>
+          <span class="muted">Permanent gauging structures in rivers provide long-term flow records for flood-frequency analysis and water-resource planning.</span></li>
+        <li><b>Hydraulics teaching laboratories.</b><br>
+          <span class="muted">Demonstrate specific energy, critical depth, the Froude number, and hydraulic jumps in a controlled flume setting.</span></li>
+      </ul>
+
+      <div class="callout"><b>Broad-crested vs. sharp-crested weirs</b>
+        <p class="muted" style="margin-bottom:0">A sharp-crested (thin-plate) weir is more accurate at low heads but is fragile and sensitive to crest damage. A broad-crested weir is more robust, handles higher sediment loads, and is preferred for permanent field installations. Typical C&#x1D421; values range from <b>0.848 to 0.99</b> depending on crest geometry and approach conditions (ISO 4374).</p>
+      </div>
+
+      <div class="callout"><b>When is submergence a concern?</b>
+        <p class="muted" style="margin-bottom:0">Free-flow conditions require the tailwater to remain below the critical depth on the crest (y₂ &lt; P + y&#x2C;). When tailwater rises above this level the crest is submerged and the free-flow equation overestimates discharge. A submergence correction factor (Villemonte or similar) must then be applied.</p>
+      </div>
+    </section>
+
+    <!-- PYTHON -->
+    <section class="tab" id="tab-python">
+      <div class="smallhead">Step-by-step calculation · Python</div>
+      <p class="muted" style="margin-bottom:10px">This code mirrors the simulator exactly. It updates live as you move the sliders so you can copy the current values straight into your own script.</p>
+      <div style="position:relative">
+        <button id="copyBtn" type="button" style="position:absolute;top:8px;right:8px;font-size:11px;padding:5px 10px;border-radius:6px;z-index:2">Copy</button>
+        <pre id="pyCode" style="
+          background:color-mix(in srgb,Canvas 85%,CanvasText 15%);
+          border:1px solid color-mix(in srgb,CanvasText 22%,transparent);
+          border-radius:10px;padding:14px 14px 14px 14px;
+          font-family:'Fira Code','Cascadia Code','Consolas',monospace;
+          font-size:12.5px;line-height:1.7;overflow-x:auto;
+          white-space:pre;margin:0;color:inherit"></pre>
+      </div>
+      <p class="muted" style="font-size:12px;margin-top:10px">Requires Python 3 · No external libraries needed · SI units throughout</p>
+    </section>
+
+    <!-- SLIDESHOW (8 Detailed Presentation Slides) -->
+    <section class="tab" id="tab-slideshow">
+      <div class="smallhead">Presentation walkthrough · slide by slide</div>
+
+      <!-- Slide 1 -->
+      <div class="slide active" id="sl-1">
+        <div class="slide-body">
+          <div class="tag">Slide 1 · Overview</div>
+          <p class="slide-header">Broad-Crested Weir: First-Principles Derivation</p>
+          <p><b>Objective:</b> Derive the discharge equation $Q = C_d\,b\,\sqrt{g}\left(\frac{2}{3}H\right)^{3/2}$ from <b>Continuity</b> and <b>Bernoulli's Energy Equation</b>.</p>
+          <p><b>Key Assumptions:</b></p>
+          <ul>
+            <li><b>Steady, incompressible flow</b> (constant density $\rho$ and constant $Q$)</li>
+            <li><b>Hydrostatic pressure</b> upstream and over the flat crest</li>
+            <li><b>Negligible approach velocity head</b> ($V_1^2 / 2g \approx 0$ because the upstream pool is deep)</li>
+            <li><b>Critical control</b> establishes on the crest ($Fr = 1$), making $Q$ depend solely on $H$</li>
+            <li><b>Real-world friction &amp; contraction</b> are captured by the discharge coefficient $C_d$</li>
+          </ul>
+          <div class="slide-diagram">
+            <svg viewBox="0 0 420 160" style="max-width:380px;width:100%;height:auto">
+              <rect x="0" y="0" width="420" height="160" fill="none"/>
+              <line x1="10" y1="140" x2="410" y2="140" stroke="#777" stroke-width="2"/>
+              <rect x="160" y="80" width="100" height="60" fill="#a8a8a8" stroke="#666" stroke-width="1.5"/>
+              <path d="M10 50 H155 Q162 50 162 56 V80 H10Z" fill="#36a6d3" opacity=".4"/>
+              <path d="M10 50 H155 Q162 50 162 56 V80" stroke="#087da9" stroke-width="2" fill="none"/>
+              <path d="M162 80 H258 V95 H162Z" fill="#36a6d3" opacity=".4"/>
+              <path d="M162 80 H258" stroke="#087da9" stroke-width="2" fill="none"/>
+              <path d="M260 95 Q280 95 290 100 H410 V140 H260Z" fill="#36a6d3" opacity=".4"/>
+              <path d="M260 95 Q280 95 290 100 H410" stroke="#087da9" stroke-width="2" fill="none"/>
+              <text x="70" y="44" font-size="12" fill="currentColor" text-anchor="middle">Upstream head H</text>
+              <line x1="70" y1="48" x2="70" y2="78" stroke="#b87526" stroke-width="1.5" marker-end="url(#arrow)"/>
+              <text x="210" y="74" font-size="11" fill="currentColor" text-anchor="middle">Critical flow (Fr = 1)</text>
+              <text x="210" y="128" font-size="11" fill="#555" text-anchor="middle">Crest height P</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2 -->
+      <div class="slide" id="sl-2">
+        <div class="slide-body">
+          <div class="tag">Slide 2 · Step 1</div>
+          <p class="slide-header">Conservation of Mass (Continuity)</p>
+          <p>Total volumetric discharge $Q$ through a rectangular cross-section of width $b$ and flow depth $y$ is:</p>
+          <div class="eq" id="sl_eq2a"></div>
+          <p>To eliminate channel width $b$ while deriving the crest hydraulics, define the <b>unit discharge $q$</b> (discharge per unit width, in $\text{m}^2/\text{s}$):</p>
+          <div class="eq" id="sl_eq2b"></div>
+          <p>Solving for velocity $v$ lets us express kinetic energy purely in terms of flow depth $y$:</p>
+          <div class="eq" id="sl_eq2c"></div>
+        </div>
+      </div>
+
+      <!-- Slide 3 -->
+      <div class="slide" id="sl-3">
+        <div class="slide-body">
+          <div class="tag">Slide 3 · Step 2</div>
+          <p class="slide-header">Bernoulli's Equation &amp; Specific Energy</p>
+          <p>Set the top of the weir crest as our elevation datum ($z = 0$). Upstream, the water surface sits at height $H = y_1 - P$ above the crest with negligible velocity ($V_1 \approx 0$), so total energy head is $H$.</p>
+          <p>Equating upstream energy head to the energy head at any point on the crest defines <b>Specific Energy $E$</b>:</p>
+          <div class="eq" id="sl_eq3a"></div>
+          <p>Substitute $v = q / y$ from Continuity:</p>
+          <div class="eq" id="sl_eq3b"></div>
+          <p class="muted">As depth $y$ decreases over the weir, potential head ($y$) converts directly into velocity head ($q^2 / 2gy^2$).</p>
+        </div>
+      </div>
+
+      <!-- Slide 4 -->
+      <div class="slide" id="sl-4">
+        <div class="slide-body">
+          <div class="tag">Slide 4 · Step 3</div>
+          <p class="slide-header">Minimizing Specific Energy (Critical Condition)</p>
+          <p>Over a broad crest, flow adjusts to pass at the <b>minimum possible specific energy</b> for a fixed unit discharge $q$. Differentiate $E(y)$ with respect to $y$ and set equal to zero:</p>
+          <div class="eq" id="sl_eq4a"></div>
+          <p>Rearrange to solve for $q^2$ at the critical depth $y = y_c$:</p>
+          <div class="eq" id="sl_eq4b"></div>
+          <p><b>Physical meaning (Froude number):</b> Dividing both sides by $y_c^2$ gives $v_c^2 = g y_c$, so:</p>
+          <div class="eq" id="sl_eq4c"></div>
+        </div>
+      </div>
+
+      <!-- Slide 5 -->
+      <div class="slide" id="sl-5">
+        <div class="slide-body">
+          <div class="tag">Slide 5 · Step 4</div>
+          <p class="slide-header">Proving the 2/3 Rule ($y_c = \frac{2}{3}H$)</p>
+          <p>Substitute the critical condition $q^2 = g y_c^3$ back into our specific energy equation $E = y + \frac{q^2}{2gy^2}$:</p>
+          <div class="eq" id="sl_eq5a"></div>
+          <p>Because energy is conserved from the upstream pool to the crest ($E_c = H$), set $\frac{3}{2}y_c = H$ and solve for $y_c$:</p>
+          <div class="eq" id="sl_eq5b"></div>
+          <p class="muted">Regardless of channel width or gravity, ideal critical depth on a broad-crested weir is always exactly <b>two-thirds</b> of the upstream head $H$.</p>
+        </div>
+      </div>
+
+      <!-- Slide 6 -->
+      <div class="slide" id="sl-6">
+        <div class="slide-body">
+          <div class="tag">Slide 6 · Step 5</div>
+          <p class="slide-header">Deriving the Ideal Discharge Equation</p>
+          <p>Take the positive square root of $q^2 = g y_c^3$ from Slide 4:</p>
+          <div class="eq" id="sl_eq6a"></div>
+          <p>Substitute $y_c = \frac{2}{3}H$ into the equation:</p>
+          <div class="eq" id="sl_eq6b"></div>
+          <p>Multiply by channel width $b$ ($Q = b \cdot q_{\text{ideal}}$) to get total ideal discharge:</p>
+          <div class="eq" id="sl_eq6c"></div>
+        </div>
+      </div>
+
+      <!-- Slide 7 -->
+      <div class="slide" id="sl-7">
+        <div class="slide-body">
+          <div class="tag">Slide 7 · Step 6</div>
+          <p class="slide-header">Adding the Discharge Coefficient ($C_d$)</p>
+          <p>Ideal theory assumes zero friction and uniform velocity. Real weirs experience:</p>
+          <ul>
+            <li><b>Boundary-layer friction</b> along the flat concrete crest</li>
+            <li><b>Flow contraction</b> at the sharp upstream edge of the weir</li>
+            <li><b>Non-zero approach velocity</b> ($V_1^2 / 2g$) in narrower channels</li>
+          </ul>
+          <p>Engineers account for these losses with an empirical <b>discharge coefficient $C_d$</b> (typically $0.848\text{–}0.99$):</p>
+          <div class="eq" id="sl_eq7a"></div>
+          <div class="callout" style="margin-top:10px"><b>Python implementation:</b>
+            <pre style="margin:6px 0 0;font-size:12px;font-family:monospace;background:none;padding:0">yc = (2 / 3) * H
+Q  = Cd * b * math.sqrt(g) * (yc ** 1.5)</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 8 -->
+      <div class="slide" id="sl-8">
+        <div class="slide-body">
+          <div class="tag">Slide 8 · Summary</div>
+          <p class="slide-header">Complete Derivation Recap</p>
+          <ol>
+            <li><b>Head over crest:</b> $H = y_1 - P$</li>
+            <li><b>Continuity:</b> $q = Q/b = v\,y \implies v = q/y$</li>
+            <li><b>Specific energy:</b> $E(y) = y + \dfrac{q^2}{2gy^2}$</li>
+            <li><b>Minimum energy ($\frac{dE}{dy} = 0$):</b> $q^2 = g y_c^3$ ($Fr = 1$)</li>
+            <li><b>Critical energy ($E_c = H$):</b> $E_c = \frac{3}{2}y_c = H \implies y_c = \frac{2}{3}H$</li>
+            <li><b>Final weir discharge equation:</b></li>
+          </ol>
+          <div class="eq" id="sl_eq8a"></div>
+          <p class="muted" style="margin-top:10px">Because $Q$ scales with $H^{3/2}$, measuring a single upstream depth $y_1$ accurately meters the entire channel flow.</p>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="slide-nav">
+        <button id="slidePrev" type="button">&#8592; Prev</button>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <span class="slide-counter" id="slideCounter">Slide 1 of 8</span>
+          <div class="slide-dots" id="slideDots"></div>
+        </div>
+        <button id="slideNext" type="button">Next &#8594;</button>
+      </div>
+    </section>
+
+    <footer>Educational simulator · SI units · Free-flow equation · KaTeX math rendering</footer>
+  </div>
+</aside>
+</div>
+</main>
+
+<script>
+(function () {
+  // Attach modal dismiss first so it always works
+  var okBtn = document.getElementById('ai-modal-ok');
+  if (okBtn) {
+    okBtn.addEventListener('click', function () {
+      var overlay = document.getElementById('ai-modal-overlay');
+      if (!overlay) return;
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity .2s';
+      setTimeout(function () {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }, 210);
+    });
+  }
+
+  const $  = id => document.getElementById(id);
+  const f  = (x, n) => Number(x).toFixed(n === undefined ? 2 : n);
+
+  const G        = 9.81;
+  const sliders  = ['crest','length','width','upstream','tail','cd'];
+  const defaults = {crest:1, length:1.5, width:2, upstream:2, tail:.4, cd:.95};
+
+  function rk(id, latex) {
+    const el = $(id);
+    if (!el) return;
+    if (typeof katex !== 'undefined') {
+      try {
+        katex.render(latex, el, {displayMode: true, throwOnError: false, strict: false});
+        return;
+      } catch (e) {}
+    }
+    el.textContent = latex;
+  }
+
+  function renderInlineMath(rootEl) {
+    if (typeof katex === 'undefined' || !rootEl) return;
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null, false);
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement && (node.parentElement.tagName === 'SCRIPT' || node.parentElement.tagName === 'STYLE' || node.parentElement.tagName === 'PRE' || node.parentElement.classList.contains('katex'))) continue;
+      if (node.nodeValue && node.nodeValue.indexOf('$') !== -1) nodes.push(node);
+    }
+    nodes.forEach(textNode => {
+      const parts = textNode.nodeValue.split(/(\$[^$]+\$)/g);
+      if (parts.length <= 1) return;
+      const frag = document.createDocumentFragment();
+      parts.forEach(part => {
+        if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
+          const span = document.createElement('span');
+          try {
+            katex.render(part.slice(1, -1), span, {displayMode: false, throwOnError: false, strict: false});
+          } catch (e) {
+            span.textContent = part;
+          }
+          frag.appendChild(span);
+        } else if (part) {
+          frag.appendChild(document.createTextNode(part));
+        }
+      });
+      textNode.parentNode.replaceChild(frag, textNode);
+    });
+  }
+
+  function renderAllMath() {
+    // Equations tab
+    rk('eq1',  'H = y_1 - P');
+    rk('eq2a', 'Q = A \\cdot v = (b \\cdot y) \\cdot v');
+    rk('eq2b', 'q = \\dfrac{Q}{b} = y \\cdot v \\quad\\Longrightarrow\\quad v = \\dfrac{q}{y}');
+    rk('eq3a', 'E = y + \\dfrac{v^2}{2g} = H');
+    rk('eq3b', 'E(y) = y + \\dfrac{(q/y)^2}{2g} = y + \\dfrac{q^2}{2g\\,y^2}');
+    rk('eq4a', '\\dfrac{dE}{dy} = 1 + \\dfrac{q^2}{2g}\\left(-2y^{-3}\\right) = 1 - \\dfrac{q^2}{g\\,y^3} = 0');
+    rk('eq4b', '\\dfrac{q^2}{g\\,y_c^3} = 1 \\quad\\Longrightarrow\\quad q^2 = g\\,y_c^3');
+    rk('eq5a', 'E_c = y_c + \\dfrac{g\\,y_c^3}{2g\\,y_c^2} = y_c + \\dfrac{1}{2}y_c = \\dfrac{3}{2}y_c');
+    rk('eq5b', 'E_c = H \\quad\\Longrightarrow\\quad \\dfrac{3}{2}y_c = H \\quad\\Longrightarrow\\quad y_c = \\dfrac{2}{3}H');
+    rk('eq6',  'q_{\\text{ideal}} = \\sqrt{g\\,y_c^3} = \\sqrt{g}\\left(\\dfrac{2}{3}H\\right)^{3/2}');
+    rk('eq7',  '\\boxed{Q = C_d \\cdot b \\cdot q_{\\text{ideal}} = C_d\\,b\\,\\sqrt{g}\\left(\\dfrac{2}{3}H\\right)^{3/2}}');
+    rk('eq8',  'v_c = \\dfrac{q}{y_c} = \\sqrt{g\\,y_c} \\qquad\\text{and}\\qquad Fr_c = \\dfrac{v_c}{\\sqrt{g\\,y_c}} = 1');
+
+    // Theory tab
+    rk('eq_fr','Fr = \\dfrac{v}{\\sqrt{g\\,y}}');
+
+    // Slideshow equations (8 slides)
+    rk('sl_eq2a', 'Q = A \\cdot v = b\\,y\\,v');
+    rk('sl_eq2b', 'q = \\dfrac{Q}{b} = y\\,v');
+    rk('sl_eq2c', 'v = \\dfrac{q}{y}');
+    rk('sl_eq3a', 'E = y + \\dfrac{v^2}{2g} = H');
+    rk('sl_eq3b', 'E(y) = y + \\dfrac{q^2}{2g\\,y^2}');
+    rk('sl_eq4a', '\\dfrac{dE}{dy} = 1 - \\dfrac{q^2}{g\\,y^3} = 0');
+    rk('sl_eq4b', 'q^2 = g\\,y_c^3');
+    rk('sl_eq4c', 'Fr_c = \\dfrac{v_c}{\\sqrt{g\\,y_c}} = 1');
+    rk('sl_eq5a', 'E_c = y_c + \\dfrac{g\\,y_c^3}{2g\\,y_c^2} = y_c + \\dfrac{y_c}{2} = \\dfrac{3}{2}\\,y_c');
+    rk('sl_eq5b', '\\dfrac{3}{2}\\,y_c = H \\quad\\Longrightarrow\\quad y_c = \\dfrac{2}{3}H');
+    rk('sl_eq6a', 'q_{\\text{ideal}} = \\sqrt{g\\,y_c^3} = \\sqrt{g}\\,y_c^{3/2}');
+    rk('sl_eq6b', 'q_{\\text{ideal}} = \\sqrt{g}\\left(\\dfrac{2}{3}H\\right)^{3/2}');
+    rk('sl_eq6c', 'Q_{\\text{ideal}} = b\\,\\sqrt{g}\\left(\\dfrac{2}{3}H\\right)^{3/2}');
+    rk('sl_eq7a', 'Q = C_d\\,b\\,\\sqrt{g}\\left(\\dfrac{2}{3}H\\right)^{3/2}');
+    rk('sl_eq8a', '\\boxed{Q = C_d\\,b\\,\\sqrt{g}\\left(\\dfrac{2}{3}H\\right)^{3/2}}');
+
+    renderInlineMath(document.body);
+  }
+
+  const tabBtns  = document.querySelectorAll('.tabBtn');
+  const tabPanes = document.querySelectorAll('.tab');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabPanes.forEach(p => p.classList.remove('active'));
+      this.classList.add('active');
+      const target = $('tab-' + this.dataset.tab);
+      if (target) {
+        target.classList.add('active');
+        renderAllMath();
+      }
+    });
+  });
+
+  sliders.forEach(k => {
+    const sl  = $('sl_'  + k);
+    const num = $('num_' + k);
+    if (!sl || !num) return;
+
+    sl.addEventListener('input', () => {
+      num.value = sl.value;
+      update();
+    });
+
+    num.addEventListener('input', () => {
+      let val = parseFloat(num.value);
+      if (isNaN(val)) return;
+      val = Math.min(parseFloat(sl.max), Math.max(parseFloat(sl.min), val));
+      sl.value  = val;
+      num.value = val;
+      update();
+    });
+
+    num.addEventListener('blur', () => {
+      let val = parseFloat(num.value);
+      if (isNaN(val)) { num.value = sl.value; return; }
+      val = Math.min(parseFloat(sl.max), Math.max(parseFloat(sl.min), val));
+      sl.value  = val;
+      num.value = val;
+      update();
+    });
+  });
+
+  function update() {
+    const v = {};
+    sliders.forEach(k => { v[k] = Number($('sl_' + k).value); });
+
+    const H   = Math.max(0, v.upstream - v.crest);
+    const yc  = (2 / 3) * H;
+    const q   = v.cd * Math.sqrt(G) * Math.pow(yc, 1.5);
+    const Q   = q * v.width;
+    const vc  = H > 0 ? Math.sqrt(G * yc) : 0;
+    const V1  = (H > 0 && v.upstream > 0) ? Q / (v.width * v.upstream) : 0;
+    const Fr1 = v.upstream > 0 ? V1 / Math.sqrt(G * v.upstream) : 0;
+    const submerged = H > 0 && v.tail > (v.crest + yc);
+
+    sliders.forEach(k => {
+      const el = $('out_' + k);
+      if (!el) return;
+      if (k === 'cd') el.textContent = f(v[k]);
+      else            el.textContent = f(v[k]) + ' m';
+    });
+
+    $('m_head').textContent = f(H) + ' m';
+    $('m_flow').textContent = H > 0 ? f(Q) + ' m\u00B3/s'  : '\u2014 (no head)';
+    $('m_unit').textContent = H > 0 ? f(q) + ' m\u00B2/s'  : '\u2014 (no head)';
+    $('m_yc').textContent   = H > 0 ? f(yc) + ' m'         : '\u2014 (no head)';
+    $('m_vc').textContent   = H > 0 ? f(vc) + ' m/s'       : '\u2014 (no head)';
+    $('m_fr1').textContent  = H > 0 ? f(Fr1, 3)             : '\u2014';
+
+    $('ov_condition').textContent = H <= 0
+      ? 'The upstream water surface is at or below the crest \u2014 no positive head for free-flow.'
+      : submerged
+        ? 'Tailwater is high relative to the critical depth. The crest may be submerged; the free-flow equation overestimates actual discharge.'
+        : 'Water passes over the crest under free-flow conditions. Critical flow is assumed at the crest.';
+    $('ov_submergence').textContent = submerged
+      ? 'Tailwater exceeds the critical control level (P + yc). Apply a submergence correction for design work.'
+      : 'Tailwater is below the critical control level \u2014 free-flow conditions apply.';
+    $('ov_regime').textContent    = H > 0 ? 'Critical (ideal)' : 'No positive head';
+    $('ov_submerged').textContent = submerged ? 'Potentially yes' : 'No';
+    $('ov_unitRow').textContent   = H > 0 ? f(q) + ' m\u00B2/s' : '\u2014';
+    $('th_fr1').textContent = H > 0 ? f(Fr1, 3) + ' (subcritical)' : '\u2014';
+    $('subWarn').classList.toggle('show', submerged);
+
+    // Live numerical walkthrough inside Equations tab
+    const liveWalk = $('eq_live_walkthrough');
+    if (liveWalk) {
+      if (H <= 0) {
+        liveWalk.innerHTML = '<b>Live numerical check:</b> Upstream depth $y_1 \\le P$, so $H = 0\\text{ m}$ and $Q = 0\\text{ m}^3/\\text{s}$. Raise $y_1$ above $P$ to see the live step-by-step numbers.';
+      } else {
+        liveWalk.innerHTML =
+          '<b>Live numerical check (with your current sliders):</b><br>' +
+          '&bull; Head: $H = ' + f(v.upstream) + ' - ' + f(v.crest) + ' = ' + f(H, 3) + '\\text{ m}$<br>' +
+          '&bull; Critical depth: $y_c = \\frac{2}{3}(' + f(H, 3) + ') = ' + f(yc, 3) + '\\text{ m}$<br>' +
+          '&bull; Unit discharge: $q = ' + f(v.cd) + '\\sqrt{9.81}(' + f(yc, 3) + ')^{3/2} = ' + f(q, 3) + '\\text{ m}^2/\\text{s}$<br>' +
+          '&bull; Total discharge: $Q = (' + f(q, 3) + ')(' + f(v.width) + ') = ' + f(Q, 3) + '\\text{ m}^3/\\text{s}$<br>' +
+          '&bull; Critical velocity: $v_c = \\sqrt{9.81 \\times ' + f(yc, 3) + '} = ' + f(vc, 3) + '\\text{ m/s}$';
+      }
+      renderInlineMath(liveWalk);
+    }
+
+    updatePython(v, H, yc, q, Q, vc, V1, Fr1, submerged);
+
+    const bed = 355;
+    const maxDepth = Math.max(v.upstream, v.crest + Math.max(v.tail, 0.3), 2.5);
+    const s   = (bed - 30) / maxDepth;
+
+    const x0 = 55, x1 = 260, x3 = 660;
+    const xR  = x1 + Math.min(160, v.length * 28);
+
+    const crestY      = bed - v.crest * s;
+    const upY         = bed - v.upstream * s;
+    const tailY       = bed - v.tail * s;
+    const crestWaterY = crestY - yc * s;
+
+    const approachStart     = Math.max(x0 + 30, x1 - 110);
+    const approachControl   = x1 - 40;
+    const downstreamControl = Math.min(x3 - 30, xR + 110);
+
+    const surface = `M${x0} ${upY} H${approachStart}
+      C${approachStart+40} ${upY},${approachControl-25} ${crestWaterY-2},${x1} ${crestWaterY}
+      H${xR}
+      C${xR+40} ${crestWaterY+2},${downstreamControl} ${tailY-2},${x3} ${tailY}`;
+
+    if (H <= 0) {
+      const stillY = bed - v.upstream * s;
+      $('gwater').innerHTML = `
+        <path d="M${x0} ${stillY} H${x1} L${x1} ${bed} L${x0} ${bed}Z"
+              fill="#36a6d3" opacity=".34"/>
+        <path d="M${x0} ${stillY} H${x1}" stroke="#087da9" stroke-width="3.2"
+              fill="none" stroke-linecap="round"/>
+        <path d="M${x0} ${stillY+9} H${x1} L${x1} ${bed} H${x0}Z"
+              fill="url(#waterLines)" opacity=".85"/>
+        <g fill="none" stroke="#b8e8f7" stroke-width="1.4" opacity=".85">
+          <path d="M${x0+15} ${stillY+32} Q${x0+70} ${stillY+30} ${x1-60} ${stillY+33}"/>
+        </g>`;
+    } else {
+      $('gwater').innerHTML = `
+        <path d="${surface} L${x3} ${bed} L${x0} ${bed}Z" fill="#36a6d3" opacity=".34"/>
+        <path d="${surface}" stroke="#087da9" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M${x0} ${upY+9} H${approachStart}
+          C${approachStart+40} ${upY+9},${approachControl-25} ${crestWaterY+6},${x1} ${crestWaterY+7}
+          H${xR}
+          C${xR+40} ${crestWaterY+9},${downstreamControl} ${tailY+7},${x3} ${tailY+7}
+          L${x3} ${bed} H${x0}Z" fill="url(#waterLines)" opacity=".85"/>
+        <g stroke="#1686b4" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M${x0+30} ${upY-18} H${x0+90} m-8-6 8 6-8 6"/>
+          <path d="M${x0+110} ${upY-18} H${x0+170} m-8-6 8 6-8 6"/>
+          <path d="M${x1+18} ${crestWaterY-16} H${Math.min(xR-10,x1+80)} m-8-6 8 6-8 6"/>
+          <path d="M${xR+25} ${crestWaterY-13} Q${xR+55} ${crestWaterY-8} ${xR+78} ${crestWaterY-2} m-9-8 9 8-10 3"/>
+        </g>
+        <g fill="none" stroke="#b8e8f7" stroke-width="1.4" opacity=".85">
+          <path d="M${x0+15} ${upY+32} Q${x0+70} ${upY+30} ${x1-100} ${upY+33}"/>
+          <path d="M${x1+18} ${crestWaterY+28} Q${x1+90} ${crestWaterY+26} ${xR-12} ${crestWaterY+28}"/>
+        </g>
+        <line x1="${x1}" y1="${crestWaterY}" x2="${xR}" y2="${crestWaterY}"
+              stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="7,4" opacity=".95"/>
+        <text x="${xR+5}" y="${crestWaterY+4}" font-size="11" fill="#f59e0b" font-weight="bold">yc</text>`;
+    }
+
+    $('gweir').innerHTML = `
+      <path d="M${x1} ${bed}V${crestY}H${xR}V${bed}Z" fill="#a8a8a8" stroke="#666" stroke-width="2"/>
+      <path d="M${x1} ${bed}V${crestY}H${xR}V${bed}Z" fill="url(#concrete)"/>`;
+
+    const mx   = x1 - 52;
+    const hx   = x1 - 30;
+    const mid1 = (upY + bed) / 2;
+    const midH = (upY + crestY) / 2;
+    const midP = (crestY + bed) / 2;
+
+    $('gdims').innerHTML = `
+      <g stroke="#b87526" stroke-width="1.5" fill="none" marker-start="url(#arrow)" marker-end="url(#arrow)">
+        <path d="M${mx} ${upY}V${bed}"/>
+        <path d="M${hx} ${upY}V${crestY}"/>
+        <path d="M${x1-10} ${crestY}V${bed}"/>
+        <path d="M${x1} ${crestY-26}H${xR}"/>
+        <path d="M${x3-12} ${tailY}V${bed}"/>
+      </g>
+      <g fill="currentColor" font-size="13">
+        <text x="${mx-6}" y="${mid1+5}" text-anchor="end">y\u2081</text>
+        <text x="${hx-4}" y="${midH+5}" text-anchor="end">H</text>
+        <text x="${x1-14}" y="${midP+5}" text-anchor="end">P</text>
+        <text x="${(x1+xR)/2}" y="${crestY-32}" text-anchor="middle">L</text>
+        <text x="${x3+4}" y="${(tailY+bed)/2+5}" text-anchor="start">y\u2082</text>
+      </g>`;
+
+    $('gtxt').innerHTML = `
+      <g fill="currentColor" font-size="13">
+        <text x="75" y="${Math.max(48, upY-30)}">UPSTREAM</text>
+        <text x="${x1+20}" y="${Math.max(44, crestY-10)}">CREST</text>
+        <text x="530" y="${Math.max(48, tailY-18)}">DOWNSTREAM</text>
+        ${H > 0 ? `<text x="80" y="${Math.min(310, upY+26)}" fill="#087da9">Water</text>` : ''}
+      </g>`;
+  }
+
+  function updatePython(v, H, yc, q, Q, vc, V1, Fr1, submerged) {
+    const n4 = x => x.toFixed(4);
+    const n2 = x => x.toFixed(2);
+    const nl = '\n';
+    const code = [
+      `# ═══════════════════════════════════════════════════`,
+      `#  Broad-Crested Weir — Step-by-Step Calculation`,
+      `#  All values match the current simulator sliders`,
+      `# ═══════════════════════════════════════════════════`,
+      `import math`,
+      ``,
+      `# ── Step 1: Input parameters ────────────────────────`,
+      `g   = 9.81          # gravitational acceleration (m/s²)`,
+      `P   = ${n2(v.crest)}           # crest height above channel bed (m)`,
+      `L   = ${n2(v.length)}           # crest length in flow direction (m)`,
+      `b   = ${n2(v.width)}           # channel width (m)`,
+      `y1  = ${n2(v.upstream)}           # upstream water depth (m)`,
+      `y2  = ${n2(v.tail)}           # downstream (tailwater) depth (m)`,
+      `Cd  = ${n2(v.cd)}           # discharge coefficient (-)`,
+      ``,
+      `# ── Step 2: Head over the crest ─────────────────────`,
+      `#  H = y1 - P  (head driving flow over the weir)`,
+      `H   = y1 - P`,
+      `#  H = ${n2(v.upstream)} - ${n2(v.crest)} = ${n4(H)} m`,
+      ``,
+      H <= 0
+        ? `# H <= 0 -> upstream water is at or below the crest.` + nl + `# No flow over the weir. Calculation stops here.`
+        : [
+      `# ── Step 3: Critical depth on the crest ─────────────`,
+      `#  From energy theory: yc = (2/3) * H`,
+      `yc  = (2 / 3) * H`,
+      `#  yc = (2 / 3) * ${n4(H)} = ${n4(yc)} m`,
+      ``,
+      `# ── Step 4: Unit discharge (per unit width) ─────────`,
+      `#  q = Cd * sqrt(g) * yc^(3/2)`,
+      `q   = Cd * math.sqrt(g) * (yc ** 1.5)`,
+      `#  q = ${n2(v.cd)} * sqrt(9.81) * (${n4(yc)} ** 1.5) = ${n4(q)} m²/s`,
+      ``,
+      `# ── Step 5: Total discharge ──────────────────────────`,
+      `#  Q = q * b`,
+      `Q   = q * b`,
+      `#  Q = ${n4(q)} * ${n2(v.width)} = ${n4(Q)} m³/s`,
+      ``,
+      `# ── Step 6: Critical velocity ────────────────────────`,
+      `#  vc = sqrt(g * yc)   (from Fr = 1 at crest)`,
+      `vc  = math.sqrt(g * yc)`,
+      `#  vc = sqrt(9.81 * ${n4(yc)}) = ${n4(vc)} m/s`,
+      ``,
+      `# ── Step 7: Upstream velocity and Froude number ──────`,
+      `#  V1 = Q / (b * y1)`,
+      `#  Fr1 = V1 / sqrt(g * y1)`,
+      `V1  = Q / (b * y1)`,
+      `Fr1 = V1 / math.sqrt(g * y1)`,
+      `#  V1 = ${n4(V1)} m/s, Fr1 = ${n4(Fr1)}`,
+      ``,
+      `# ── Step 8: Submergence check ────────────────────────`,
+      `#  Free flow requires: y2 < P + yc`,
+      `#  Critical level = P + yc = ${n4(v.crest + yc)} m`,
+      `#  Tailwater y2   = ${n2(v.tail)} m`,
+      submerged
+        ? `#  WARNING: y2 > P + yc -> SUBMERGED. Free-flow Q overestimates.` + nl + `#  Apply Villemonte correction for design work.`
+        : `#  OK: y2 < P + yc -> FREE FLOW confirmed.`,
+      ``,
+      `# ── Summary ──────────────────────────────────────────`,
+      `print(f"H   = {H:.4f} m")`,
+      `print(f"yc  = {yc:.4f} m")`,
+      `print(f"q   = {q:.4f} m²/s")`,
+      `print(f"Q   = {Q:.4f} m³/s")`,
+      `print(f"vc  = {vc:.4f} m/s")`,
+      `print(f"Fr1 = {Fr1:.4f}")`,
+      ].join(nl),
+    ].join(nl);
+
+    $('pyCode').textContent = code;
+  }
+
+  $('copyBtn').addEventListener('click', function () {
+    const text = $('pyCode').textContent;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.textContent = '✓ Copied!';
+        setTimeout(() => { this.textContent = 'Copy'; }, 1800);
+      }).catch(() => {});
+    }
+  });
+
+  $('reset').addEventListener('click', () => {
+    sliders.forEach(k => {
+      const sl  = $('sl_'  + k);
+      const num = $('num_' + k);
+      if (sl)  sl.value  = defaults[k];
+      if (num) num.value = defaults[k];
+    });
+    update();
+  });
+
+  const TOTAL_SLIDES = 8;
+  let currentSlide = 1;
+
+  const dotsContainer = $('slideDots');
+  for (let i = 1; i <= TOTAL_SLIDES; i++) {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'slide-dot' + (i === 1 ? ' active' : '');
+    dot.setAttribute('aria-label', 'Go to slide ' + i);
+    dot.addEventListener('click', () => goToSlide(i));
+    dotsContainer.appendChild(dot);
+  }
+
+  function goToSlide(n) {
+    const prev = $('sl-' + currentSlide);
+    if (prev) prev.classList.remove('active');
+    currentSlide = Math.max(1, Math.min(TOTAL_SLIDES, n));
+    const next = $('sl-' + currentSlide);
+    if (next) {
+      next.classList.add('active');
+      renderAllMath();
+    }
+    $('slideCounter').textContent = 'Slide ' + currentSlide + ' of ' + TOTAL_SLIDES;
+    dotsContainer.querySelectorAll('.slide-dot').forEach((d, i) => {
+      d.classList.toggle('active', i + 1 === currentSlide);
+    });
+    $('slidePrev').disabled = currentSlide === 1;
+    $('slideNext').disabled = currentSlide === TOTAL_SLIDES;
+  }
+
+  $('slidePrev').addEventListener('click', () => goToSlide(currentSlide - 1));
+  $('slideNext').addEventListener('click', () => goToSlide(currentSlide + 1));
+  goToSlide(1);
+
+  renderAllMath();
+  update();
+})();
+</script>
+</body>
+</html>
